@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Almoxarifado Central — Amvox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1E2761; --navy-dk: #161B4D; --teal: #0F6E7A; --amber: #F5A623;
+  --red: #B0281A; --red-bg: #FCE9E6; --amber-bg: #FDF1D9; --teal-bg: #E4F2F1;
+  --purple-bg: #EDEBFB; --purple: #5433A6;
+  --bg: #F4F6F8; --paper: #FFFFFF; --line: #DFE3EA; --text: #1E2233; --muted: #6B7180;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1260px; margin: 0 auto; padding: 32px 24px 64px; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 28px; flex-wrap: wrap; }
+.header .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: var(--teal); font-weight: 600; margin-bottom: 6px; }
+.header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; color: var(--navy); margin: 0 0 4px; }
+.header .sub { color: var(--muted); font-size: 14px; }
+.stamp { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 14px; text-align: right; background: var(--paper); }
+.stamp b { color: var(--navy); display: block; font-size: 13px; margin-bottom: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px; }
+.kpi { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; position: relative; overflow: hidden; }
+.kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.kpi.navy::before { background: var(--navy); }
+.kpi.red::before { background: var(--red); }
+.kpi.amber::before { background: var(--amber); }
+.kpi.teal::before { background: var(--teal); }
+.kpi .label { font-size: 11px; color: var(--muted); margin-bottom: 6px; line-height: 1.3; min-height: 28px; }
+.kpi .value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--navy); }
+.kpi.red .value { color: var(--red); }
+.kpi.amber .value { color: #8A6100; }
+.kpi.teal .value { color: var(--teal); }
+
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.panel-head h2 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; margin: 0; color: var(--navy); }
+.panel-head .count { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); }
+
+.filters { display: flex; gap: 10px; padding: 14px 20px; flex-wrap: wrap; background: #FBFCFD; border-bottom: 1px solid var(--line); }
+.filters input, .filters select { font-family: 'Inter', sans-serif; font-size: 13px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--text); }
+.filters input { flex: 1; min-width: 200px; }
+.filters select { min-width: 150px; }
+.filters input:focus, .filters select:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
+
+.table-scroll { max-height: 560px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { position: sticky; top: 0; z-index: 1; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600; color: var(--muted); background: var(--paper); padding: 10px 20px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody td { padding: 10px 20px; border-bottom: 1px solid #EEF1F5; vertical-align: middle; }
+tbody tr:hover { background: #FAFBFD; }
+.code { font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-weight: 600; font-size: 12px; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.badge.critico { background: var(--red-bg); color: var(--red); }
+.badge.atencao { background: var(--amber-bg); color: #8A6100; }
+.badge.ok { background: var(--teal-bg); color: var(--teal); }
+.badge.entrada { background: var(--teal-bg); color: var(--teal); }
+.badge.saida { background: var(--purple-bg); color: var(--purple); }
+.badge.recebido { background: var(--teal-bg); color: var(--teal); }
+.badge.pendente { background: var(--amber-bg); color: #8A6100; }
+.badge.atrasado { background: var(--red-bg); color: var(--red); }
+.muted { color: var(--muted); }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+
+.dist { padding: 20px; }
+.dist-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.dist-row:last-child { margin-bottom: 0; }
+.dist-label { width: 90px; font-size: 12.5px; color: var(--text); font-weight: 600; flex-shrink: 0; }
+.dist-bar-bg { flex: 1; height: 10px; background: #EEF1F5; border-radius: 6px; overflow: hidden; }
+.dist-bar { height: 100%; border-radius: 6px; }
+.dist-bar.critico { background: var(--red); }
+.dist-bar.atencao { background: var(--amber); }
+.dist-bar.ok { background: var(--teal); }
+.dist-bar.recebido { background: var(--teal); }
+.dist-bar.pendente { background: var(--amber); }
+.dist-bar.atrasado { background: var(--red); }
+.dist-count { width: 34px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--muted); }
+
+.cat-list { padding: 20px; }
+.cat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #F0F2F5; font-size: 12.5px; }
+.cat-row:last-child { border-bottom: none; }
+.cat-row .n { font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-weight: 600; }
+
+/* ---------- Critical alert panel ---------- */
+.alert-panel { background: var(--paper); border: 1px solid #F3C9C2; border-left: 4px solid var(--red); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+.alert-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 20px; background: var(--red-bg); }
+.alert-head h2 { font-family: 'Space Grotesk', sans-serif; font-size: 16px; margin: 0; color: var(--red); display: flex; align-items: center; gap: 8px; }
+.alert-head .count { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--red); font-weight: 600; }
+.alert-empty { padding: 24px 20px; text-align: center; color: var(--teal); font-size: 13px; font-weight: 600; }
+
+/* ---------- Ranked list (top produtos) ---------- */
+.rank-list { padding: 8px 20px 16px; }
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #F0F2F5; }
+.rank-row:last-child { border-bottom: none; }
+.rank-num { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 12.5px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-code { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--muted); }
+.rank-value { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy); flex-shrink: 0; }
+.rank-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+
+footer { margin-top: 8px; padding-top: 18px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+footer b { color: var(--navy); }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+  thead { display: none; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tbody tr { border-bottom: 1px solid var(--line); padding: 10px 20px; }
+  tbody td { border: none; padding: 3px 0; }
+  tbody td::before { content: attr(data-label); font-family:'IBM Plex Mono',monospace; font-size:10px; color: var(--muted); display:block; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <div class="kicker">AMVOX · ALMOXARIFADO CENTRAL</div>
+      <h1>Painel de Status do Almoxarifado</h1>
+      <div class="sub">Controle inicial · POP-AMX-01 · Fase manual, antes da entrada do AMVOX TECH / Protheus</div>
+    </div>
+    <div class="stamp">
+      <b id="stampDate">—</b>
+      Última movimentação registrada
+    </div>
+  </div>
+
+  <div class="kpis" id="kpiRow"></div>
+
+  <div class="alert-panel">
+    <div class="alert-head">
+      <h2>⚠ Alerta — Itens em Nível Crítico</h2>
+      <div class="count" id="alertCount">0 itens</div>
+    </div>
+    <div class="table-scroll" style="max-height: 320px;">
+      <table>
+        <thead><tr><th>Código</th><th>Item</th><th>Atual</th><th>Mínimo</th><th>Categoria</th><th>Local</th></tr></thead>
+        <tbody id="alertBody"></tbody>
+      </table>
+    </div>
+    <div class="alert-empty" id="alertEmpty" style="display:none;">Nenhum item em nível crítico no momento.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Cadastro de Itens</h2>
+      <div class="count" id="itemCount">0 itens</div>
+    </div>
+    <div class="filters">
+      <input type="text" id="searchInput" placeholder="Buscar por código ou nome do item...">
+      <select id="catFilter"><option value="">Todas as categorias</option></select>
+      <select id="statusFilter">
+        <option value="">Todos os status</option>
+        <option value="Crítico - Repor">Crítico — Repor</option>
+        <option value="Atenção">Atenção</option>
+        <option value="OK">OK</option>
+      </select>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Código</th><th>Item</th><th>Categoria</th><th>Mín.</th><th>Segurança</th><th>Máx.</th><th>Atual</th><th>Status</th><th>Local</th></tr></thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="itemsEmpty" style="display:none;">Nenhum item encontrado com esses filtros.</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Pedidos de Compra — Previsão de Chegada</h2>
+        <div class="count" id="pedCount">0 pedidos</div>
+      </div>
+      <div class="filters">
+        <select id="pedStatusFilter">
+          <option value="">Todos os status</option>
+          <option value="Pendente">Pendente</option>
+          <option value="Atrasado">Atrasado</option>
+          <option value="Recebido">Recebido</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>Nº Pedido</th><th>Item</th><th>Qtd.</th><th>Fornecedor</th><th>Previsão</th><th>Status</th><th>NF</th></tr></thead>
+        <tbody id="pedidosBody"></tbody>
+      </table>
+      <div class="empty" id="pedidosEmpty" style="display:none;">Nenhum pedido de compra registrado ainda.</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Itens por Categoria</h2></div>
+      <div class="cat-list" id="catList"></div>
+      <div class="panel-head" style="border-top:1px solid var(--line);"><h2>Itens por Status</h2></div>
+      <div class="dist" id="distItens"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-head"><h2>Top 10 — Maior Estoque Atual</h2></div>
+      <div class="rank-list" id="rankEstoque"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Top 10 — Mais Movimentados</h2></div>
+      <div class="rank-list" id="rankMovs"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Movimentações Recentes</h2>
+      <div class="count" id="movCount">0 registros</div>
+    </div>
+    <div class="filters">
+      <select id="movTipoFilter">
+        <option value="">Entradas e Saídas</option>
+        <option value="Entrada">Só Entradas</option>
+        <option value="Saída">Só Saídas</option>
+      </select>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd.</th><th>Unid.</th><th>Setor / Fornecedor</th><th>Documento</th></tr></thead>
+        <tbody id="movsBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="movsEmpty" style="display:none;">Nenhuma movimentação registrada ainda.</div>
+  </div>
+
+  <footer>
+    <span>Gerado a partir de <b>Controle_Inicial_Almoxarifado.xlsx</b>.</span>
+    <span>Envie a planilha atualizada no chat para gerar uma nova versão deste painel.</span>
+  </footer>
+
+</div>
+
+<script>
+const DATA = {"items": [{"codigo": "001032D33", "item": "FILME STRETCH 500X17", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 100, "seguranca": 250, "maximo": 600, "inicial": 106, "entradas": 0, "saidas": 0, "atual": 106, "status": "Atenção", "local": "Endereço 05", "obs": null}, {"codigo": "001032C90", "item": "FITA ADESIVA TRANSPARENTE 48X100M", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 100, "seguranca": 250, "maximo": 700, "inicial": 480, "entradas": 0, "saidas": 0, "atual": 480, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "1301061", "item": "ETIQUETA 100X60X1 COUCHE", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 50, "seguranca": 100, "maximo": 350, "inicial": 364, "entradas": 0, "saidas": 0, "atual": 364, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001032F90", "item": "ETIQ 100X60X1 TERMICO 30M 1POL /BRANCA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 50, "seguranca": 100, "maximo": 350, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032K43", "item": "RIBBON CERA 110X450", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 10, "seguranca": 20, "maximo": 50, "inicial": 59, "entradas": 0, "saidas": 0, "atual": 59, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001832D19", "item": "FITA ADESIVA TRANSPARENTE 48X1500 MTS", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "Atenção", "local": "Endereço 01", "obs": null}, {"codigo": "1032082", "item": "LONA PLASTICA PRETO 6X100X15", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 30, "saidas": 0, "atual": 30, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032C79", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL /VERMELHO", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "Atenção", "local": "Endereço 01", "obs": null}, {"codigo": "001032C83", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL / VERDE", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 13, "entradas": 0, "saidas": 0, "atual": 13, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001032C81", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL /LARANJA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 14, "entradas": 0, "saidas": 0, "atual": 14, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001032C80", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL /AZUL", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 13, "entradas": 0, "saidas": 0, "atual": 13, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "1301055", "item": "ETIQ 20X20X4 BOPP FOSCO RL 6.237 35M 1POL /BRANCA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "Atenção", "local": "Endereço 01", "obs": null}, {"codigo": "001832H31", "item": "ETIQUETA 20X20X4 COUCHE RL 6237 35M 1POL BRANCA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032H45", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL /ROSA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032H43", "item": "ETIQ 20X20X4 BOPP PEROLA RL 5000 29M 1POL /MARROM", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1301023", "item": "ETIQUETA 100X200X1 COUCHE RL 172 35 M 1POL BR", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "1301067", "item": "ETIQ. 50X25X2 COUCHE RL 2000 30M", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1301049", "item": "BOBINA EMBRULHO KRAFT 1.20 50KG / 90G", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "1832741", "item": "FITA ADESIVA KRAFT MARROM", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032A85", "item": "RIBBON CERA 110X074 IIMAK", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 270, "entradas": 0, "saidas": 0, "atual": 270, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001032Z69", "item": "SACO TRANSP 55X90", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 4000, "entradas": 0, "saidas": 0, "atual": 4000, "status": "OK", "local": "Endereço 01", "obs": null}, {"codigo": "001032S05", "item": "ETIQUETA 15X10X4 BOPP BRANCA", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032H42", "item": "ETIQUETA 60X40X1 COUCHE / BRANCA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001832B87", "item": "ETIQUETA 100X60X1 COUCHE RL 481 30M 1POL / VERMELHA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 3, "seguranca": 7, "maximo": 15, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001832B86", "item": "ETIQUETA 100X60X1 COUCHE RL 481 30M 1POL / VERDE", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 3, "seguranca": 7, "maximo": 15, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001832B88", "item": "ETIQUETA 100X60X1 COUCHE RL 481 30M 1POL / AMARELA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 3, "seguranca": 7, "maximo": 15, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "001032S52", "item": "ETIQUETA 15X10X4 BOPP VERMELHA", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1032929", "item": "ETIQ REDONDA 150X150X1 COUCHE RL 1000  AMVOX", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1301064", "item": "ETIQ REDONDA 90X90X1 COUCHE RL1000/ AMVOX", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1301066", "item": "ETIQ. ESPECIAL 135,22X140X1 COUCHE RL 1000", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1301027", "item": "ETQ ESPECIAL 77,29X80X1 COUCHE RL1000 86M 3POL/ INSTAGRAM", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 1, "seguranca": 2, "maximo": 5, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1832981", "item": "ETIQ 50X30X2 COUCHE RL 2000 33M 1POL /AZUL 127V", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1832982", "item": "ETIQ 50X30X2 COUCHE RL 2000 33M 1POL /VERMELHA 220V", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1023104", "item": "ISOPOR PLACA 15 MM", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 10, "seguranca": 40, "maximo": 100, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "1023105", "item": "ISOPOR PLACA 25 MM", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 10, "seguranca": 40, "maximo": 100, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": null}, {"codigo": "??", "item": "Eti Adesiva Passa Pasta", "categoria": "Insumos Operacionais", "unidade": "RL", "min": 1, "seguranca": 2, "maximo": 5, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 01", "obs": "Não achei o insumo no TOTVS"}, {"codigo": "??", "item": "Saco 79x100L C/100", "categoria": "Insumos Operacionais", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 500, "entradas": 0, "saidas": 0, "atual": 500, "status": "OK", "local": "Endereço 01", "obs": "Não achei o insumo no TOTVS"}, {"codigo": "1023085", "item": "CANETA  AZUL", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 79, "entradas": 0, "saidas": 0, "atual": 79, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023084", "item": "CANETA VERMELHA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023130", "item": "PILOTO DE QUADRO BR AZUL", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "1023083", "item": "PILOTO DE QUADRO BR PRETO", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 29, "entradas": 0, "saidas": 0, "atual": 29, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "1023129", "item": "PILOTO DE QUADRO BR VERMELHO", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 19, "entradas": 0, "saidas": 0, "atual": 19, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "001032Q69", "item": "PAPEL A4 - CAIXA COM 05 RESMAS", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1301018", "item": "FITA PVC 45X45 TRANSPARENTE", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023009", "item": "ELASTICO AM 100UN", "categoria": "Materiais de Escritório", "unidade": "PCT", "min": 0, "seguranca": 1, "maximo": 1, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023051", "item": "PASTA SUSPENSA 0.30", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023077", "item": "LIVRO DE PROT.DE CORRESPONDENCIA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 10, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023015", "item": "COLA SUPER BONDER 20G", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 10, "inicial": 8, "entradas": 0, "saidas": 0, "atual": 8, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1832789", "item": "FITA DUPLA FACE 3M FIXA EXTREME 24X2M", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 10, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023005", "item": "TINTA P/CARIMBO 40ML PRETA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 5, "maximo": 10, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023086", "item": "LAPIS", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 2, "seguranca": 5, "maximo": 10, "inicial": 22, "entradas": 0, "saidas": 0, "atual": 22, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "001032F69", "item": "BORRACHA BRANCA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 32, "entradas": 0, "saidas": 0, "atual": 32, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE PT PARA UNI"}, {"codigo": "1032609", "item": "PRENDEDOR DE PAPAEL 19MM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 12, "entradas": 0, "saidas": 0, "atual": 12, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1032054", "item": "APONTADOR  DE LAPIS", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 7, "entradas": 0, "saidas": 0, "atual": 7, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023064", "item": "MACADOR DE TEXTO AMARELO", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 47, "entradas": 0, "saidas": 0, "atual": 47, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023126", "item": "MARCADOR DE TEXTO AZUL", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 24, "entradas": 0, "saidas": 0, "atual": 24, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023050", "item": "MARCADOR DE TEXTO LARANJA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 28, "entradas": 0, "saidas": 0, "atual": 28, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023049", "item": "MARCADOR DE TEXTO VERDE", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1032608", "item": "BLOCO POST IT SORTIDO 76X76MM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "001032D24", "item": "PRENDEDOR DE PAPAEL 41MM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 12, "entradas": 0, "saidas": 0, "atual": 12, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "001032D23", "item": "PRENDEDOR DE PAPAEL 50MM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 24, "entradas": 0, "saidas": 0, "atual": 24, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "1023021", "item": "BLOCO POST-IT 38X50MM SORTIDO C/ 200FLS", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "MUDAR UNIDADE DE MEDIDA DE CX PARA UNI"}, {"codigo": "1", "item": "Grampo galvanizado", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023013", "item": "CLIPS N.2 C/100 UN", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023047", "item": "CLIPS 6/0 C/50 UN", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023065", "item": "CORRETIVO LIQUIDO", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 7, "entradas": 0, "saidas": 0, "atual": 7, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1032717", "item": "EXTRATOR GRAMPOS ESPATULA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 13, "entradas": 0, "saidas": 0, "atual": 13, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "001032G07", "item": "FITA ADESIVA DUPLA FACE BRANCA19MMX30M", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023012", "item": "CALCULADORA DE MESA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "5566045", "item": "COLA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "001032U90", "item": "GRAMPEADOR MET 16CM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "720030", "item": "FITA CREPE 18MM X 50M", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1023031", "item": "TESOURA INOX 19,5CM", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "1032009", "item": "APLICADOR DE FITA", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": null}, {"codigo": "??", "item": "Fita pura calculadora Sharp", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Marcador para retro projetor preto", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Bloco adesivo pequeno '' 10mmx10mm''", "categoria": "Materiais de Escritório", "unidade": "CX", "min": 1, "seguranca": 1, "maximo": 1, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Fita transparente empacotadora 12mmx30m", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Marca texto ''rosa''", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 17, "entradas": 0, "saidas": 0, "atual": 17, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "CADASTRAR E LANÇAR EM UNIDADE"}, {"codigo": "??", "item": "Tinta De carimbo azul", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 5, "maximo": 10, "inicial": 12, "entradas": 0, "saidas": 0, "atual": 12, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Suplimentos para impressoras master print", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 4, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Tinta De carimbo vermelho", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 5, "maximo": 10, "inicial": 5, "entradas": 0, "saidas": 0, "atual": 5, "status": "Atenção", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Cola de isopor", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Aúdio fita Cassete ''Cartucho''", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Piloto De Quadro / Verde", "categoria": "Materiais de Escritório", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Escritorio", "obs": "Não tem cadastro"}, {"codigo": "001832H57", "item": "REVITALIZADOR DE PLASTICOS REJUVEX 400G", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032P02", "item": "OLEO CG MULTIUSO 100ML", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 15, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1023058", "item": "ABRACADEIRA NYLON 100X2,5 BRANCA C/ 100", "categoria": "Consumo Geral", "unidade": "UNI", "min": 2, "seguranca": 4, "maximo": 5, "inicial": 100, "entradas": 0, "saidas": 0, "atual": 100, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Mudar no totvs de CT para UNI"}, {"codigo": "1832890", "item": "NUGGET LIQUIDO PRETO 60ML", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 15, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1023039", "item": "PILHA ALKALINA  AA (2A) 2 UN", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Mudar no totvs de JG para UNI"}, {"codigo": "1023122", "item": "PILHA ALKALINA AAA (3A) C/2", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 12, "entradas": 0, "saidas": 0, "atual": 12, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Mudar no totvs de JG para UNI"}, {"codigo": "1023041", "item": "PILHA ALKALINA QUADRADA 9 VOLT", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832D60", "item": "ACETONA 100ML", "categoria": "Consumo Geral", "unidade": "LT", "min": 5, "seguranca": 10, "maximo": 15, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1832222", "item": "LIMPA CONTATO SPRAY", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Atenção", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1032345", "item": "MASSA DE POLIR ANJO", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032R28", "item": "ABRACADEIRA UV PT NYLON 200X4,8", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 300, "entradas": 0, "saidas": 0, "atual": 300, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Mudar no totvs de PCT para UNI"}, {"codigo": "001832B01", "item": "SAPONACEO CREMOSO 250ML", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032L82", "item": "ESTANHO EM FIO C/ FLUXO 1,5MM 50X50 500G VONDER", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832B75", "item": "PILHA BATERIA 1,5V LR44", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Atenção", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032K88", "item": "TINTA SPRAY SUPER COLOR PARA USO GERAL PRETO BRILHANTE 350ML", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832H05", "item": "ENVELOPE COM BOLHA LAMINADO RECICLADO CINZA 26X36-25UN", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 24, "entradas": 0, "saidas": 0, "atual": 24, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1032259", "item": "BASTAO COLA QUENTE GROSSA 500G", "categoria": "Consumo Geral", "unidade": "PCT", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 5, "entradas": 0, "saidas": 0, "atual": 5, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832G07", "item": "BASTAO COLA QUENTE GROSSA 1KG", "categoria": "Consumo Geral", "unidade": "PCT", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": "Mudar no totvs de UNI PARA PCT"}, {"codigo": "001032F47", "item": "BASTAO COLA QUENTE GROSSA 500G PRETO", "categoria": "Consumo Geral", "unidade": "PCT", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032V37", "item": "COLA QUENTE BASTAO FINO BLACK 7,5 MM X 30 CM 1 KG", "categoria": "Consumo Geral", "unidade": "PCT", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832D27", "item": "PANO MICROFIBRA 30X30CM", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 21, "entradas": 0, "saidas": 0, "atual": 21, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001832H04", "item": "ENVELOPE COM BOLHA LAMINADO CINZA 12X18 - 100UN", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 100, "entradas": 0, "saidas": 0, "atual": 100, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1002010", "item": "CAFE 250GR UND", "categoria": "Consumo Geral", "unidade": "UNI", "min": 5, "seguranca": 25, "maximo": 100, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1002002", "item": "AÇUCA CRISTAL 1KG", "categoria": "Consumo Geral", "unidade": "KG", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032J70", "item": "COPO DESCARTAVEL 250 ML C/ 100", "categoria": "Consumo Geral", "unidade": "PCT", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "1032753", "item": "COPO DESCARTAVEL TRANSPARENTE 200ML", "categoria": "Consumo Geral", "unidade": "PCT", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "001032J61", "item": "GARFO REFEICAO 50 UNI PACOTE", "categoria": "Consumo Geral", "unidade": "PCT", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": null}, {"codigo": "??", "item": "Tinta spray uso geral mundial prime", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Pasta multiuso cristal 500g rosa", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 7, "entradas": 0, "saidas": 0, "atual": 7, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Carnu cera com silicone 200g", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Atenção", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Envelope bolha preta 14,8x24cm", "categoria": "Consumo Geral", "unidade": "UNI", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 50, "entradas": 0, "saidas": 0, "atual": 50, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "LIQ NUGGET INCOLOR", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 15, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "Nugget Liquido 60ml Branco", "categoria": "Consumo Geral", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 15, "inicial": 8, "entradas": 0, "saidas": 0, "atual": 8, "status": "OK", "local": "Armario 01   /   Consumo Geral", "obs": "Não tem cadastro"}, {"codigo": "001032R89", "item": "ROLO PERFEX DE 300 MTS PANO MULTIUSO", "categoria": "Limpeza e Higiene", "unidade": "RL", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1032963", "item": "ALCOOL GEL 05 LTS", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 23, "entradas": 0, "saidas": 0, "atual": 23, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1032389", "item": "ALCOOL LIQUIDO 70 05LT", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "001032T96", "item": "ESPONJA DUPLA FACE 71X100MM - BRILHUS BETTANIN SP9471", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 10, "seguranca": 20, "maximo": 30, "inicial": 7, "entradas": 0, "saidas": 0, "atual": 7, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003070", "item": "NAFTALINA PERFUMADA 30GR SANY", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 10, "seguranca": 20, "maximo": 30, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1832572", "item": "PANO DE CHAO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 10, "seguranca": 20, "maximo": 40, "inicial": 40, "entradas": 0, "saidas": 0, "atual": 40, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1003053", "item": "SACO DE LIXO 500LT", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003038", "item": "SACO DE LIXO 200 LT", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1003035", "item": "SACO DE LIXO 60 LT", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 3, "seguranca": 6, "maximo": 10, "inicial": 18, "entradas": 0, "saidas": 0, "atual": 18, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1003036", "item": "SACO DE LIXO 100L LT", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 3, "seguranca": 6, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003037", "item": "SACO DE LIXO 300L PR", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 3, "seguranca": 6, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003038", "item": "SACO DE LIXO 200 LT", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 3, "seguranca": 6, "maximo": 10, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003080", "item": "VASSOURA DE NYLON", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 5, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1032235", "item": "LIMPADOR MULTIUSO 5 LT", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 3, "seguranca": 15, "maximo": 30, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1003075", "item": "ESPONJA DE ACO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 10, "seguranca": 20, "maximo": 30, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003054", "item": "DETERGENTE NEUTRO 5 LT", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003039", "item": "SABONETE 5LTS PEROLADO P/MAOS", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 2, "seguranca": 5, "maximo": 10, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "001032F18", "item": "LIMPA VIDROS 5LTS", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032R86", "item": "LIMPA PISO PEDRA GALAO", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 1, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003056", "item": "HIPOCLORITO DE SODIO 5LTS 2% LIZ", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 9, "entradas": 0, "saidas": 0, "atual": 9, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "001032M92", "item": "SHAMPOO AUTOMOTIVO 5LTS", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003104", "item": "DESINFETANTE LIQ. 05 LTS", "categoria": "Limpeza e Higiene", "unidade": "GL", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1003042", "item": "PAPEL HIGIENICO 8 X 220", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 5, "seguranca": 10, "maximo": 20, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003058", "item": "PAPEL BOBINA TOALHA 20X200 C/6", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "Endereço 03", "obs": null}, {"codigo": "1003040", "item": "SABAO EM PO 500GR ALA", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 15, "inicial": 14, "entradas": 0, "saidas": 0, "atual": 14, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1003088", "item": "LUSTRA  MOVEIS 200 ML YPE", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1003034", "item": "INSETICIDA SBP OU RAID 380ML", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 3, "seguranca": 8, "maximo": 20, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1032860", "item": "TOALHEIRO DE ALAVANCA", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 4, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1032861", "item": "LIXEIRA 60LT AZUL C/TAMPA COLETA SELETIVA PAPEL", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1032862", "item": "LIXEIRA 60LT VERM C/TAMPA COLETA SELETIVA PLASTICO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032F64", "item": "LIXEIRA 60LT MARROM C/ TAMPA COLETIVA", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "1032461", "item": "CESTO LIXO PRETO 12LTS", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032L20", "item": "RODO PLASTICO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 10, "entradas": 0, "saidas": 0, "atual": 10, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032R77", "item": "PAPEL TOALHA INTERFOLHADA FOLHA DUPLA 21 X 22CM / 200 FOLHAS", "categoria": "Limpeza e Higiene", "unidade": "PCT", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 13, "entradas": 0, "saidas": 0, "atual": 13, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "1003062", "item": "MOP UMIDO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 11, "entradas": 0, "saidas": 0, "atual": 11, "status": "OK", "local": "Endereço 03", "obs": null}, {"codigo": "001032R88", "item": "MOP PO SECO COMPLETO DE 60 CM - CABO DE ALUMINIO", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 5, "entradas": 0, "saidas": 0, "atual": 5, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "001032A38", "item": "LIXEIRA PLASTICA RET. BRANCA C/PEDAL 50LTS", "categoria": "Limpeza e Higiene", "unidade": "UNI", "min": 1, "seguranca": 2, "maximo": 3, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Atenção", "local": "Endereço 03", "obs": null}, {"codigo": "001032O60", "item": "OCULOS RIO DE JANEIRO POLI FER INCOLOR COM AJUSTE CA 34082", "categoria": "EPI", "unidade": "UNI", "min": 5, "seguranca": 15, "maximo": 30, "inicial": 53, "entradas": 0, "saidas": 0, "atual": 53, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "001032R94", "item": "MANGA DE PROTECAO SOLAR UV", "categoria": "EPI", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 EP", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 5, "entradas": 0, "saidas": 0, "atual": 5, "status": "Atenção", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 PP TAM 6 KALIPSU", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 PP", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "1004043", "item": "LUVA POLIAMIDA C/PU  CA 21260 P", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 24, "entradas": 0, "saidas": 0, "atual": 24, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004044", "item": "LUVA POLIAMIDA C/PU  CA 21260 M", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 15, "entradas": 0, "saidas": 0, "atual": 15, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004045", "item": "LUVA POLIAMIDA C/PU  CA 21260 G", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 33, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 GG", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": null, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 XG", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "??", "item": "LUVA POLIAMIDA C/PU  CA 21260 EG", "categoria": "EPI", "unidade": "PAR", "min": 5, "seguranca": 10, "maximo": 30, "inicial": 24, "entradas": 0, "saidas": 0, "atual": 24, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "001832F63", "item": "LUVA MODELO CORAL LATEX LARANJA CA 15336 - TAM XG", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 5, "entradas": 0, "saidas": 0, "atual": 5, "status": "Atenção", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1032173", "item": "LUVA LATEX AMARELA CANO CURTO G", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 20, "entradas": 0, "saidas": 0, "atual": 20, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "001032H36", "item": "PROTETOR PLUG C.A 5745", "categoria": "EPI", "unidade": "UNI", "min": 3, "seguranca": 9, "maximo": 30, "inicial": 22, "entradas": 0, "saidas": 0, "atual": 22, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "001032S10", "item": "LUVA DE LATEX NITRILICO COM FORRO VERDE", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1032281", "item": "LUVA PRETA PIGMENTADA  CA3491", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 3, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "LUVA PIGMENTADA PRETA E VERDE"}, {"codigo": "1004013", "item": "LUVA MALHA PIGMENTADA  CA33818", "categoria": "EPI", "unidade": "PAR", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 12, "entradas": 0, "saidas": 0, "atual": 12, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": "LUVA PIGMENTADA BRANCA"}, {"codigo": "1032867", "item": "AVENTAL RASPA", "categoria": "EPI", "unidade": "UNI", "min": 3, "seguranca": 5, "maximo": 10, "inicial": 4, "entradas": 0, "saidas": 0, "atual": 4, "status": "Atenção", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004036", "item": "BOTA NOBUK MARROM N35 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004012", "item": "BOTA NOBUK MARROM N39 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004038", "item": "BOTA NOBUCK N43 MARROM CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004034", "item": "BOTA NOBUK MARROM N45 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004040", "item": "BOTA NOBUK MARROM N40 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1001022", "item": "BOTA NOBUK MARROM N38 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004033", "item": "BOTA NOBUK MARROM N41 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 3, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004021", "item": "BOTA NOBUK MARRON N42 CA 45611", "categoria": "EPI", "unidade": "EP", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": null, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "001032S15", "item": "OCULOS DANNY SOBREPOR NETUNO 15700 INCOLOR CA 16462", "categoria": "EPI", "unidade": "UNI", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 6, "entradas": 0, "saidas": 0, "atual": 6, "status": "OK", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004051", "item": "PALMILHA EVA AIR C/ GEL N34 FUJIWARA", "categoria": "EPI", "unidade": "PAR", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "1004053", "item": "PALMILHA EVA AIR C/ GEL N36 FUJIWARA", "categoria": "EPI", "unidade": "PAR", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "001032I22", "item": "PALMILHA DE GEL EM PU CALLTONY N46", "categoria": "EPI", "unidade": "PAR", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 1, "entradas": 0, "saidas": 0, "atual": 1, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}, {"codigo": "??", "item": "SUPORTE COM VISOR PARA CAPACETE", "categoria": "EPI", "unidade": "UNI", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 0, "entradas": 0, "saidas": 0, "atual": 0, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": "Não tem cadastro"}, {"codigo": "001832H02", "item": "AVENTAL SOLIDA PVC PT 120X60 C.A45789", "categoria": "EPI", "unidade": "UNI", "min": 2, "seguranca": 3, "maximo": 5, "inicial": 2, "entradas": 0, "saidas": 0, "atual": 2, "status": "Crítico - Repor", "local": "ARMARIO 02   /    EPI's", "obs": null}], "entradas": [{"tipo": "Entrada", "data": "2026-09-22", "codigo": "1032082", "item": "LONA PLASTICA PRETO 6X100X15", "quantidade": 30, "unidade": "RL", "fornecedor": "FJF IND DE PROD PLASTICO LTDA", "nf": "NF 26.208", "pedido": 13219, "registrado_por": "Robert soares"}], "saidas": [{"tipo": "Saída", "data": "2026-09-24", "codigo": "1032082", "item": "LONA PLASTICA PRETO 6X100X15", "quantidade": 2, "unidade": "RL", "setor": "Estoque - 0202", "requisitante": "Adenildo", "requisicao": "REQ 0001", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-24", "codigo": "1832572", "item": "PANO DE CHAO", "quantidade": 5, "unidade": "UNI", "setor": "Facilites - 0407", "requisitante": "Rosinete", "requisicao": "REQ 0002", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-24", "codigo": "1003104", "item": "DESINFETANTE LIQ. 05 LTS", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Rosinete", "requisicao": "REQ 0002", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-24", "codigo": "1003054", "item": "DETERGENTE NEUTRO 5 LT", "quantidade": 2, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Rosinete", "requisicao": "REQ 0002", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-25", "codigo": "1032082", "item": "LONA PLASTICA PRETO 6X100X15", "quantidade": 2, "unidade": "RL", "setor": "Estoque - 0202", "requisitante": "Adenildo", "requisicao": "REQ 0003", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-25", "codigo": "1003104", "item": "DESINFETANTE LIQ. 05 LTS", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Rosinete", "requisicao": "REQ 0004", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-25", "codigo": "1003054", "item": "DETERGENTE NEUTRO 5 LT", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Rosinete", "requisicao": "REQ 0004", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-25", "codigo": "1003056", "item": "HIPOCLORITO DE SODIO 5LTS 2% LIZ", "quantidade": 2, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Selma", "requisicao": "REQ 0004", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-29", "codigo": "1", "item": "Grampo galvanizado", "quantidade": 1, "unidade": "CX", "setor": "Produção - 0203", "requisitante": "Rai de jesus", "requisicao": "REQ 0005", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1003104", "item": "DESINFETANTE LIQ. 05 LTS", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Henrique", "requisicao": "REQ 0006", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1032235", "item": "LIMPADOR MULTIUSO 5 LT", "quantidade": 2, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Henrique/Welligtom", "requisicao": "REQ 0006", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1003070", "item": "NAFTALINA PERFUMADA 30GR SANY", "quantidade": 1, "unidade": "PCT", "setor": "Facilites - 0407", "requisitante": "Henrique", "requisicao": "REQ 0006", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1003039", "item": "SABONETE 5LTS PEROLADO P/MAOS", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Wellingtom", "requisicao": "REQ 0006", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1003056", "item": "HIPOCLORITO DE SODIO 5LTS 2% LIZ", "quantidade": 1, "unidade": "GL", "setor": "Facilites - 0407", "requisitante": "Henrique", "requisicao": "REQ 0006", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-09-30", "codigo": "1032389", "item": "ALCOOL LIQUIDO 70 05LT", "quantidade": 1, "unidade": "GL", "setor": "Ass.Técnica", "requisitante": "Robson", "requisicao": "REQ 0007", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-10-01", "codigo": "001832B94", "item": "Código não encontrado", "quantidade": 12, "unidade": "PCT", "setor": "Facilites - 0407", "requisitante": "Selma", "requisicao": "REQ 0008", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-10-02", "codigo": "1004044", "item": "LUVA POLIAMIDA C/PU  CA 21260 M", "quantidade": 3, "unidade": "PAR", "setor": "Segurança do trabalho - 0212", "requisitante": "Dilma", "requisicao": "REQ 0009", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-10-02", "codigo": "1004045", "item": "LUVA POLIAMIDA C/PU  CA 21260 G", "quantidade": 1, "unidade": "PAR", "setor": "Segurança do trabalho - 0212", "requisitante": "Dilma", "requisicao": "REQ 0009", "registrado_por": "Robert Soares"}, {"tipo": "Saída", "data": "2026-10-02", "codigo": "001032H36", "item": "PROTETOR PLUG C.A 5745", "quantidade": 1, "unidade": "UNI", "setor": "Segurança do trabalho - 0212", "requisitante": "Dilma", "requisicao": "REQ 0009", "registrado_por": "Robert Soares"}], "pedidos": []};
+
+function statusClass(s) {
+  if (s === 'Crítico - Repor') return 'critico';
+  if (s === 'Atenção') return 'atencao';
+  return 'ok';
+}
+function statusLabel(s) { return s === 'Crítico - Repor' ? 'Crítico — Repor' : s; }
+function pedStatusClass(s) {
+  if (s === 'Recebido') return 'recebido';
+  if (s === 'Atrasado') return 'atrasado';
+  return 'pendente';
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderKPIs() {
+  const items = DATA.items;
+  const total = items.length;
+  const critico = items.filter(i => i.status === 'Crítico - Repor').length;
+  const atencao = items.filter(i => i.status === 'Atenção').length;
+  const ok = items.filter(i => i.status === 'OK').length;
+  const pendentes = DATA.pedidos.filter(p => p.status === 'Pendente').length;
+  const atrasados = DATA.pedidos.filter(p => p.status === 'Atrasado').length;
+
+  const allMoves = [...DATA.entradas, ...DATA.saidas];
+  const lastDate = allMoves.reduce((max, m) => (m.data && (!max || m.data > max)) ? m.data : max, null);
+  document.getElementById('stampDate').textContent = lastDate ? formatDate(lastDate) : '—';
+
+  const kpis = [
+    ['navy', 'Itens cadastrados', total],
+    ['red', 'Crítico — repor', critico],
+    ['amber', 'Em atenção', atencao],
+    ['teal', 'Status OK', ok],
+    ['amber', 'Pedidos pendentes', pendentes],
+    ['red', 'Pedidos atrasados', atrasados],
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(([cls, label, value]) => `
+    <div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div></div>
+  `).join('');
+}
+
+function populateFilters() {
+  const cats = [...new Set(DATA.items.map(i => i.categoria).filter(Boolean))].sort();
+  const sel = document.getElementById('catFilter');
+  cats.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; sel.appendChild(opt); });
+}
+
+function renderItems() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const cat = document.getElementById('catFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const filtered = DATA.items.filter(i => {
+    const matchQ = !q || (i.codigo && i.codigo.toLowerCase().includes(q)) || (i.item && i.item.toLowerCase().includes(q));
+    const matchCat = !cat || i.categoria === cat;
+    const matchStatus = !status || i.status === status;
+    return matchQ && matchCat && matchStatus;
+  });
+  document.getElementById('itemCount').textContent = `${filtered.length} de ${DATA.items.length} itens`;
+  const body = document.getElementById('itemsBody');
+  const empty = document.getElementById('itemsEmpty');
+  if (filtered.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; }
+  else {
+    empty.style.display = 'none';
+    body.innerHTML = filtered.map(i => `
+      <tr>
+        <td data-label="Código" class="code">${i.codigo}</td>
+        <td data-label="Item">${i.item || ''}</td>
+        <td data-label="Categoria" class="muted">${i.categoria || ''}</td>
+        <td data-label="Mín.">${i.min ?? ''}</td>
+        <td data-label="Segurança">${i.seguranca ?? ''}</td>
+        <td data-label="Máx.">${i.maximo ?? ''}</td>
+        <td data-label="Atual"><b>${i.atual ?? ''}</b></td>
+        <td data-label="Status"><span class="badge ${statusClass(i.status)}">${statusLabel(i.status)}</span></td>
+        <td data-label="Local" class="muted">${i.local || ''}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function renderPedidos() {
+  const statusF = document.getElementById('pedStatusFilter').value;
+  const filtered = DATA.pedidos.filter(p => !statusF || p.status === statusF)
+    .sort((a,b) => (a.previsao||'').localeCompare(b.previsao||''));
+  document.getElementById('pedCount').textContent = `${filtered.length} de ${DATA.pedidos.length} pedidos`;
+  const body = document.getElementById('pedidosBody');
+  const empty = document.getElementById('pedidosEmpty');
+  if (filtered.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; }
+  else {
+    empty.style.display = 'none';
+    body.innerHTML = filtered.map(p => `
+      <tr>
+        <td data-label="Nº Pedido" class="code">${p.numero}</td>
+        <td data-label="Item">${p.item || ''}</td>
+        <td data-label="Qtd."><b>${p.quantidade ?? ''}</b></td>
+        <td data-label="Fornecedor" class="muted">${p.fornecedor || ''}</td>
+        <td data-label="Previsão">${formatDate(p.previsao)}</td>
+        <td data-label="Status"><span class="badge ${pedStatusClass(p.status)}">${p.status || ''}</span></td>
+        <td data-label="NF" class="code muted">${p.nf || '—'}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function renderMovs() {
+  const tipoF = document.getElementById('movTipoFilter').value;
+  let all = [
+    ...DATA.entradas.map(m => ({...m, doc: m.pedido, local: m.fornecedor})),
+    ...DATA.saidas.map(m => ({...m, doc: m.requisicao, local: m.setor})),
+  ];
+  if (tipoF) all = all.filter(m => m.tipo === tipoF);
+  all.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+  document.getElementById('movCount').textContent = `${all.length} registros`;
+  const body = document.getElementById('movsBody');
+  const empty = document.getElementById('movsEmpty');
+  if (all.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; }
+  else {
+    empty.style.display = 'none';
+    body.innerHTML = all.map(m => `
+      <tr>
+        <td data-label="Data" class="muted">${formatDate(m.data)}</td>
+        <td data-label="Tipo"><span class="badge ${m.tipo === 'Entrada' ? 'entrada' : 'saida'}">${m.tipo}</span></td>
+        <td data-label="Item">${m.item || ''}</td>
+        <td data-label="Qtd."><b>${m.quantidade ?? ''}</b></td>
+        <td data-label="Unid." class="muted">${m.unidade || ''}</td>
+        <td data-label="Setor / Fornecedor" class="muted">${m.local || ''}</td>
+        <td data-label="Documento" class="code">${m.doc || ''}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function renderDistItens() {
+  const items = DATA.items;
+  const total = items.length || 1;
+  const rows = [
+    ['critico', 'Crítico', items.filter(i => i.status === 'Crítico - Repor').length],
+    ['atencao', 'Atenção', items.filter(i => i.status === 'Atenção').length],
+    ['ok', 'OK', items.filter(i => i.status === 'OK').length],
+  ];
+  document.getElementById('distItens').innerHTML = rows.map(([cls, label, count]) => `
+    <div class="dist-row"><div class="dist-label">${label}</div>
+      <div class="dist-bar-bg"><div class="dist-bar ${cls}" style="width:${(count/total*100).toFixed(0)}%"></div></div>
+      <div class="dist-count">${count}</div></div>
+  `).join('');
+}
+
+function renderCatList() {
+  const items = DATA.items;
+  const counts = {};
+  items.forEach(i => { const c = i.categoria || 'Sem categoria'; counts[c] = (counts[c]||0)+1; });
+  const rows = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  document.getElementById('catList').innerHTML = rows.map(([cat, n]) => `
+    <div class="cat-row"><span>${cat}</span><span class="n">${n}</span></div>
+  `).join('');
+}
+
+function renderAlert() {
+  const criticos = DATA.items.filter(i => i.status === 'Crítico - Repor')
+    .sort((a,b) => (a.atual ?? 0) - (b.atual ?? 0));
+  document.getElementById('alertCount').textContent = `${criticos.length} ${criticos.length === 1 ? 'item' : 'itens'}`;
+  const body = document.getElementById('alertBody');
+  const empty = document.getElementById('alertEmpty');
+  if (criticos.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; }
+  else {
+    empty.style.display = 'none';
+    body.innerHTML = criticos.map(i => `
+      <tr>
+        <td data-label="Código" class="code">${i.codigo}</td>
+        <td data-label="Item">${i.item || ''}</td>
+        <td data-label="Atual"><b style="color:var(--red)">${i.atual ?? 0}</b></td>
+        <td data-label="Mínimo" class="muted">${i.min ?? ''}</td>
+        <td data-label="Categoria" class="muted">${i.categoria || ''}</td>
+        <td data-label="Local" class="muted">${i.local || ''}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function renderRankEstoque() {
+  const top = [...DATA.items]
+    .filter(i => i.atual !== null && i.atual !== undefined && i.atual !== '')
+    .sort((a,b) => (b.atual||0) - (a.atual||0))
+    .slice(0, 10);
+  document.getElementById('rankEstoque').innerHTML = top.map((i, idx) => `
+    <div class="rank-row">
+      <div class="rank-num">${idx+1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${i.item || i.codigo}</div>
+        <div class="rank-code">${i.codigo} · ${i.categoria || ''}</div>
+      </div>
+      <div class="rank-value">${i.atual}<div class="rank-sub">${i.unidade || ''}</div></div>
+    </div>
+  `).join('');
+}
+
+function renderRankMovs() {
+  const counts = {};
+  [...DATA.entradas, ...DATA.saidas].forEach(m => {
+    if (!m.codigo) return;
+    if (!counts[m.codigo]) counts[m.codigo] = { codigo: m.codigo, item: m.item, n: 0, qty: 0 };
+    counts[m.codigo].n += 1;
+    counts[m.codigo].qty += (m.quantidade || 0);
+  });
+  const top = Object.values(counts).sort((a,b) => b.n - a.n).slice(0, 10);
+  document.getElementById('rankMovs').innerHTML = top.length === 0
+    ? `<div class="alert-empty" style="color:var(--muted);">Nenhuma movimentação registrada ainda.</div>`
+    : top.map((m, idx) => `
+      <div class="rank-row">
+        <div class="rank-num">${idx+1}</div>
+        <div class="rank-info">
+          <div class="rank-name">${m.item || m.codigo}</div>
+          <div class="rank-code">${m.codigo} · ${m.qty} un. movimentadas</div>
+        </div>
+        <div class="rank-value">${m.n}<div class="rank-sub">${m.n === 1 ? 'lançamento' : 'lançamentos'}</div></div>
+      </div>
+    `).join('');
+}
+
+renderKPIs();
+populateFilters();
+renderItems();
+renderPedidos();
+renderMovs();
+renderDistItens();
+renderCatList();
+renderAlert();
+renderRankEstoque();
+renderRankMovs();
+
+document.getElementById('searchInput').addEventListener('input', renderItems);
+document.getElementById('catFilter').addEventListener('change', renderItems);
+document.getElementById('statusFilter').addEventListener('change', renderItems);
+document.getElementById('pedStatusFilter').addEventListener('change', renderPedidos);
+document.getElementById('movTipoFilter').addEventListener('change', renderMovs);
+</script>
+</body>
+</html>
